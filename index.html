@@ -197,8 +197,11 @@
   <p>Thanks. Your teacher can now see the class results.</p>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-let SCRIPT_URL = '';
+const SUPABASE_URL = 'https://asasgfnqvoylkqurknhe.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_o8RaG6NBwrwO4eu-YiIW7Q_9XZ9bCXa';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let params = {};
 let criteria = [];
@@ -206,20 +209,8 @@ let criteriaSignals = {};
 let yGoalSignal = null;
 let sessionCode = null;
 
-async function loadConfig() {
-  try {
-    const resp = await fetch('./config.json');
-    const cfg  = await resp.json();
-    SCRIPT_URL = cfg.script_url || '';
-  } catch(e) {
-    console.warn('Could not load config.json', e);
-  }
-}
-
 // ── Init ──────────────────────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', async function() {
-  await loadConfig();
-
+window.addEventListener('DOMContentLoaded', function() {
   const p = new URLSearchParams(window.location.search);
 
   params = {
@@ -242,7 +233,6 @@ window.addEventListener('DOMContentLoaded', async function() {
     sessionCode = params.session_code;
     showForm();
   }
-  // else: gate is visible by default
 });
 
 // ── Code formatting ───────────────────────────────────────────────────────────
@@ -254,7 +244,6 @@ function formatCode(input) {
 
 function enterCode() {
   const raw = document.getElementById('session-code-input').value.trim().toUpperCase();
-  // Accept with or without hyphen
   const clean = raw.replace('-','');
   if (clean.length !== 8 || !/^[A-Z]{4}\d{4}$/.test(clean)) {
     document.getElementById('session-error').textContent = 'Enter a valid code — e.g. XKQT-4821';
@@ -269,23 +258,19 @@ function enterCode() {
 function showForm() {
   document.getElementById('session-gate').style.display = 'none';
   document.getElementById('signal-form').style.display  = 'block';
-
   document.getElementById('node-label-display').textContent = params.node_label || 'Check in';
   document.getElementById('standard-display').textContent   = params.standard   || '';
   document.getElementById('ygoal-display').textContent      = params.y_goal     || '';
-
   renderCriteria();
 }
 
 function renderCriteria() {
   const container = document.getElementById('criteria-container');
   container.innerHTML = '';
-
   if (!criteria.length) {
     container.innerHTML = '<p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">No criteria loaded.</p>';
     return;
   }
-
   criteria.forEach(function(text, index) {
     criteriaSignals[index] = null;
     const card = document.createElement('div');
@@ -327,20 +312,24 @@ async function submitSignals() {
   btn.disabled = true; btn.textContent = 'Submitting…';
   document.getElementById('submit-error').textContent = '';
 
-  const payload = {
-    session_code:  sessionCode,
-    student_id:    getOrCreateStudentId(),
-    standard:      params.standard,
-    node_id:       params.node_id,
-    node_label:    params.node_label,
-    signals:       criteria.map((text, i) => ({ index: i, text, signal: criteriaSignals[i] })),
-    y_goal_signal: yGoalSignal
-  };
+  const studentId = getOrCreateStudentId();
+  const rows = criteria.map(function(text, i) {
+    return {
+      session_code:  sessionCode,
+      student_id:    studentId,
+      standard:      params.standard,
+      node_id:       params.node_id,
+      node_label:    params.node_label,
+      criterion_idx: i,
+      criterion_txt: text,
+      signal:        criteriaSignals[i],
+      y_goal_signal: yGoalSignal
+    };
+  });
 
   try {
-    const resp = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
-    const data = await resp.json();
-    if (!data.ok) throw new Error(data.error || 'Submission failed');
+    const { error } = await db.from('signals').insert(rows);
+    if (error) throw error;
     document.getElementById('signal-form').style.display = 'none';
     document.getElementById('done-state').style.display  = 'block';
   } catch(err) {

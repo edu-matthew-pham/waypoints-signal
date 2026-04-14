@@ -212,7 +212,17 @@
   .loading { font-size: 13px; color: var(--text-muted); padding: 8px 0; }
 
   /* ── Change PIN ── */
-  .change-pin-wrap { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border); }
+  .session-item {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px; margin-bottom: 6px;
+    cursor: pointer; transition: border-color .15s;
+  }
+  .session-item:hover { border-color: var(--accent); }
+  .session-item-left { flex: 1; }
+  .session-item-label { font-size: 13px; font-weight: 500; color: var(--text); }
+  .session-item-meta  { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-family: 'DM Mono', monospace; }
+  .session-item-code  { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; color: var(--accent); margin-left: 12px; flex-shrink: 0; }
   .change-pin-wrap summary { font-size: 13px; color: var(--text-muted); cursor: pointer; }
   .change-pin-inner { margin-top: 16px; }
 </style>
@@ -303,7 +313,12 @@
     <div class="panel" id="panel-results">
 
       <div class="field">
-        <label>Session code</label>
+        <label>Recent sessions</label>
+        <div id="session-list"><div class="no-results" style="padding:12px 0">Loading…</div></div>
+      </div>
+
+      <div class="field" style="margin-top:8px">
+        <label>Or enter session code manually</label>
         <div style="display:flex;gap:8px;align-items:center">
           <input type="text" id="res-code" placeholder="XKQT-4821"
             style="font-family:'DM Mono',monospace;letter-spacing:.08em;max-width:160px;text-transform:uppercase"
@@ -334,8 +349,13 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ── Config ────────────────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://asasgfnqvoylkqurknhe.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_o8RaG6NBwrwO4eu-YiIW7Q_9XZ9bCXa';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 const SIGNAL_URL  = window.location.origin + window.location.pathname.replace('teacher.html', '');
 const PIN_KEY     = "wp_teacher_pin";
 const PIN_SET_KEY = "wp_teacher_pin_set";
@@ -352,20 +372,9 @@ function nodeFile(code) {
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let SCRIPT_URL = '';
 let goalsMap   = null;
 let currentStd = null;
 let selectedCriteria = new Set();
-
-async function loadConfig() {
-  try {
-    const resp = await fetch('./config.json');
-    const cfg  = await resp.json();
-    SCRIPT_URL = cfg.script_url || '';
-  } catch(e) {
-    console.warn('Could not load config.json', e);
-  }
-}
 
 // ── PIN ───────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', function() {
@@ -419,7 +428,7 @@ function changePin() {
 function showApp() {
   document.getElementById('pin-gate').style.display  = 'none';
   document.getElementById('main-app').style.display  = 'block';
-  loadConfig().then(() => loadGoalsMap());
+  loadGoalsMap();
 }
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
@@ -428,6 +437,46 @@ function switchTab(name) {
     document.getElementById('tab-' + t).classList.toggle('active', t === name);
     document.getElementById('panel-' + t).classList.toggle('active', t === name);
   });
+  if (name === 'results') loadRecentSessions();
+}
+
+async function loadRecentSessions() {
+  const list = document.getElementById('session-list');
+  list.innerHTML = '<div class="no-results" style="padding:12px 0">Loading…</div>';
+
+  try {
+    const { data, error } = await db
+      .from('sessions')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (error) throw error;
+
+    if (!data || !data.length) {
+      list.innerHTML = '<div class="no-results" style="padding:12px 0">No sessions yet.</div>'; return;
+    }
+
+    list.innerHTML = '';
+    data.forEach(function(session) {
+      const date = new Date(session.created_at).toLocaleDateString('en-AU', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+      const div = document.createElement('div');
+      div.className = 'session-item';
+      div.innerHTML = `
+        <div class="session-item-left">
+          <div class="session-item-label">${session.label || session.session_code}</div>
+          <div class="session-item-meta">${date}</div>
+        </div>
+        <div class="session-item-code">${session.session_code}</div>`;
+      div.onclick = function() {
+        document.getElementById('res-code').value = session.session_code;
+        fetchResults();
+      };
+      list.appendChild(div);
+    });
+  } catch(err) {
+    list.innerHTML = '<div class="no-results" style="padding:12px 0">Could not load sessions.</div>';
+  }
 }
 
 // ── Data loading ──────────────────────────────────────────────────────────────
@@ -558,6 +607,14 @@ function checkGenReady() {
 
 
 // ── Generate session ──────────────────────────────────────────────────────────
+function generateSessionCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let letters = '';
+  for (let i = 0; i < 4; i++) letters += chars[Math.floor(Math.random() * chars.length)];
+  const digits = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+  return letters + '-' + digits;
+}
+
 async function generateSession() {
   const code    = document.getElementById('sel-standard').value;
   const nodeVal = document.getElementById('sel-node').value;
@@ -569,43 +626,38 @@ async function generateSession() {
     document.getElementById('gen-error').textContent = 'Select a standard and waypoint.'; return;
   }
 
-  // Resolve node label and criteria
   let nodeLabel, nodeId, criteriaTexts;
   if (nodeVal === 'all') {
-    nodeLabel = 'All waypoints';
-    nodeId = 'all';
-    criteriaTexts = [];
+    nodeLabel = 'All waypoints'; nodeId = 'all'; criteriaTexts = [];
     currentStd.nodes.forEach(n => (n.success_criteria || []).forEach(t => criteriaTexts.push(t)));
   } else {
     const node = currentStd.nodes.find(n => n.id === parseInt(nodeVal));
     if (!node) { document.getElementById('gen-error').textContent = 'Could not find node.'; return; }
-    nodeLabel = node.label;
-    nodeId = node.id;
+    nodeLabel = node.label; nodeId = node.id;
     criteriaTexts = node.success_criteria || [];
   }
 
   if (!criteriaTexts.length) {
-    document.getElementById('gen-error').textContent = 'No success criteria found for this selection.'; return;
+    document.getElementById('gen-error').textContent = 'No success criteria found.'; return;
   }
 
   const btn = document.getElementById('gen-btn');
   btn.disabled = true; btn.textContent = 'Generating…';
 
   try {
-    const regUrl = SCRIPT_URL + '?action=register'
-      + '&standard='   + encodeURIComponent(code)
-      + '&node_id='    + encodeURIComponent(nodeId)
-      + '&node_label=' + encodeURIComponent(nodeLabel)
-      + '&label='      + encodeURIComponent(code + ' · ' + nodeLabel);
-
-    const resp = await fetch(regUrl);
-    const data = await resp.json();
-    if (!data.ok) throw new Error(data.error || 'Registration failed');
-
-    showCodeResult(data.session_code, code, nodeId, nodeLabel, ygoal, criteriaTexts);
-
+    // Register session in Supabase
+    const sessionCode = generateSessionCode();
+    const { error } = await db.from('sessions').insert({
+      session_code: sessionCode,
+      standard:     code,
+      node_id:      String(nodeId),
+      node_label:   nodeLabel,
+      label:        code + ' · ' + nodeLabel
+    });
+    if (error) throw error;
+    showCodeResult(sessionCode, code, nodeId, nodeLabel, ygoal, criteriaTexts);
   } catch(err) {
-    document.getElementById('gen-error').textContent = 'Could not generate code — check your connection.';
+    document.getElementById('gen-error').textContent = 'Could not generate code — ' + err.message;
   } finally {
     btn.disabled = false; btn.textContent = 'Generate session code';
   }
@@ -621,9 +673,7 @@ function showCodeResult(sessionCode, standard, nodeId, nodeLabel, ygoal, criteri
     + '&nlabel=' + encodeURIComponent(nodeLabel)
     + '&ygoal='  + encodeURIComponent(ygoal);
 
-  criteria.forEach(function(c, i) {
-    url += '&c' + i + '=' + encodeURIComponent(c);
-  });
+  criteria.forEach(function(c, i) { url += '&c' + i + '=' + encodeURIComponent(c); });
 
   document.getElementById('student-url').textContent = url;
   document.getElementById('code-result').style.display = 'block';
@@ -632,16 +682,14 @@ function showCodeResult(sessionCode, standard, nodeId, nodeLabel, ygoal, criteri
 function copyUrl() {
   navigator.clipboard.writeText(document.getElementById('student-url').textContent).then(() => {
     const btn = document.getElementById('copy-url-btn');
-    btn.textContent = 'Copied!';
-    setTimeout(() => btn.textContent = 'Copy link', 2000);
+    btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = 'Copy link', 2000);
   });
 }
 
 function copyCode() {
   navigator.clipboard.writeText(document.getElementById('code-value').textContent).then(() => {
     const btn = document.getElementById('copy-code-btn');
-    btn.textContent = 'Copied!';
-    setTimeout(() => btn.textContent = 'Copy code only', 2000);
+    btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = 'Copy code only', 2000);
   });
 }
 
@@ -654,11 +702,33 @@ async function fetchResults() {
   container.innerHTML = '<div class="no-results">Loading…</div>';
 
   try {
-    const url = SCRIPT_URL + '?session_code=' + encodeURIComponent(code);
-    const resp = await fetch(url);
-    const data = await resp.json();
-    if (!data.ok) throw new Error(data.error || 'Failed to load');
-    renderResults(data);
+    const { data, error } = await db
+      .from('signals')
+      .select('*')
+      .eq('session_code', code);
+
+    if (error) throw error;
+    if (!data || !data.length) {
+      container.innerHTML = '<div class="no-results">No responses yet for this session.</div>'; return;
+    }
+
+    // Aggregate
+    const studentIds = new Set(data.map(r => r.student_id));
+    const aggregate  = {};
+    const yGoalAgg   = { green: 0, yellow: 0, red: 0 };
+
+    data.forEach(function(row) {
+      const key = row.criterion_idx + '|' + row.criterion_txt;
+      if (!aggregate[key]) aggregate[key] = { index: row.criterion_idx, text: row.criterion_txt, green: 0, yellow: 0, red: 0 };
+      if (aggregate[key][row.signal] !== undefined) aggregate[key][row.signal]++;
+      if (yGoalAgg[row.y_goal_signal] !== undefined) yGoalAgg[row.y_goal_signal]++;
+    });
+
+    renderResults({
+      student_count:    studentIds.size,
+      aggregate:        Object.values(aggregate).sort((a,b) => a.index - b.index),
+      y_goal_aggregate: yGoalAgg
+    });
   } catch(err) {
     container.innerHTML = '<div class="no-results">Could not load — check the code and your connection.</div>';
   }
