@@ -172,7 +172,7 @@
 
     <div class="section-label">Success criteria — how confident are you?</div>
     <div id="ygoal-context" style="display:none;background:var(--bg);border-left:3px solid var(--border);padding:10px 14px;margin-bottom:14px;border-radius:0 8px 8px 0">
-      <div style="font-size:10px;font-family:'DM Mono',monospace;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px">By the end of this unit</div>
+      <div style="font-size:10px;font-family:'DM Mono',monospace;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px">At this waypoint</div>
       <div id="ygoal-context-text" style="font-size:13px;line-height:1.55;color:var(--text)"></div>
     </div>
     <div id="criteria-container"></div>
@@ -245,20 +245,24 @@ async function loadSession(sc) {
     const nodeData = await nodeResp.json();
 
     let criteriaTexts = [];
+    let nodeYDescription = '';
     if (data.node_id === 'all') {
       nodeData.standard.nodes.forEach(n => (n.success_criteria || []).forEach(t => criteriaTexts.push(t)));
+      nodeYDescription = nodeData.standard.y_goal || '';
     } else {
       const node = nodeData.standard.nodes.find(n => n.id === parseInt(data.node_id));
       criteriaTexts = node?.success_criteria || [];
+      nodeYDescription = node?.y_description || '';
     }
 
     params = {
-      session_code: sc,
-      standard:     data.standard,
-      node_id:      data.node_id,
-      node_label:   data.node_label,
-      y_goal:       data.y_goal || '',
-      criteria:     criteriaTexts
+      session_code:      sc,
+      standard:          data.standard,
+      node_id:           data.node_id,
+      node_label:        data.node_label,
+      y_goal:            data.y_goal || '',
+      node_y_description: nodeYDescription,
+      criteria:          criteriaTexts
     };
     criteria = criteriaTexts;
     showForm();
@@ -298,8 +302,8 @@ function showForm() {
   document.getElementById('standard-display').textContent   = params.standard   || '';
   document.getElementById('ygoal-display').textContent      = params.y_goal     || '';
 
-  if (params.y_goal) {
-    document.getElementById('ygoal-context-text').textContent = params.y_goal;
+  if (params.node_y_description) {
+    document.getElementById('ygoal-context-text').textContent = params.node_y_description;
     document.getElementById('ygoal-context').style.display = 'block';
   }
   renderCriteria();
