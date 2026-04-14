@@ -707,7 +707,7 @@ async function fetchResults() {
         let idx = 0;
         nodeData.standard.nodes.forEach(n => {
           const sc = n.success_criteria || [];
-          if (sc.length) criteriaGroups.push({ nodeLabel: n.label, nodeId: n.id, hinge: n.hinge, startIdx: idx, count: sc.length });
+          if (sc.length) criteriaGroups.push({ nodeLabel: n.label, nodeId: n.id, hinge: n.hinge, y_description: n.y_description || '', startIdx: idx, count: sc.length });
           idx += sc.length;
         });
       } catch(e) { criteriaGroups = null; }
@@ -777,10 +777,14 @@ function renderResults(data) {
   const groups = data.criteria_groups;
 
   // Helper to get group header for an index
-  function groupHeaderFor(i, prevI) {
+  function groupHeaderFor(i) {
     if (!groups) return null;
     const g = groups.find(g => g.startIdx === i);
-    return g ? `<div style="font-size:10px;font-family:'DM Mono',monospace;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin:${i > 0 ? '12px' : '0'} 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border)">${g.nodeLabel}${g.hinge ? ' ⚑' : ''}</div>` : null;
+    if (!g) return null;
+    return `<div style="margin:${i > 0 ? '16px' : '0'} 0 6px">
+      <div style="font-size:10px;font-family:'DM Mono',monospace;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);padding-bottom:4px;border-bottom:1px solid var(--border);margin-bottom:4px">${g.nodeLabel}${g.hinge ? ' ⚑' : ''}</div>
+      ${g.y_description ? `<div style="font-size:11px;color:var(--text-muted);line-height:1.5;font-style:italic">${g.y_description}</div>` : ''}
+    </div>`;
   }
 
   data.aggregate.forEach(function(row, i) {
