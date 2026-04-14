@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Waypoints — Check In</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --border: #e8e6e0;
+    --text: #1a1917;
+    --text-muted: #8a8780;
+    --green: #2d9e6b;
+    --green-light: #edf7f2;
+    --yellow: #d4920a;
+    --yellow-light: #fdf6e3;
+    --red: #cc3f3f;
+    --red-light: #fdf0f0;
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+
+  .page { max-width: 560px; margin: 0 auto; }
+
+  /* ── PIN gate ── */
+  #session-gate {
+    max-width: 400px;
+    margin: 80px auto 0;
+    text-align: center;
+  }
+  #session-gate h2 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+  #session-gate p  { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.5; }
+
+  .code-input-wrap {
+    display: flex; gap: 8px; justify-content: center; align-items: center; margin-bottom: 8px;
+  }
+
+  #session-code-input {
+    font-family: 'DM Mono', monospace;
+    font-size: 20px; font-weight: 500;
+    letter-spacing: .15em; text-align: center; text-transform: uppercase;
+    width: 170px; padding: 12px 10px;
+    border: 2px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); outline: none;
+    transition: border-color .15s;
+  }
+  #session-code-input:focus { border-color: var(--text); }
+  #session-code-input::placeholder { letter-spacing: .1em; color: #ccc; }
+
+  .btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px; font-weight: 600;
+    padding: 12px 20px; border: none;
+    border-radius: var(--radius); cursor: pointer; transition: opacity .15s;
+  }
+  .btn:hover { opacity: .85; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-primary { background: var(--text); color: #fff; }
+  .btn-full { width: 100%; padding: 14px; font-size: 15px; }
+
+  .error-msg { font-size: 13px; color: var(--red); margin-top: 8px; min-height: 20px; }
+
+  /* ── Header ── */
+  .header { margin-bottom: 28px; }
+  .header-label {
+    font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;
+  }
+  .header h1 { font-size: 20px; font-weight: 600; line-height: 1.3; margin-bottom: 4px; }
+  .header .standard-code { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-muted); }
+
+  /* ── Section label ── */
+  .section-label {
+    font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px;
+  }
+
+  /* ── Criterion card ── */
+  .criterion-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 10px;
+  }
+  .criterion-text { font-size: 14px; line-height: 1.55; margin-bottom: 14px; }
+
+  .signal-row { display: flex; gap: 8px; }
+
+  .signal-btn {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 10px 8px; border-radius: 8px; border: 2px solid transparent;
+    background: var(--bg); cursor: pointer;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+    color: var(--text-muted); transition: all .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .signal-btn .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  .signal-btn[data-signal="green"]  .dot { background: var(--green); }
+  .signal-btn[data-signal="yellow"] .dot { background: var(--yellow); }
+  .signal-btn[data-signal="red"]    .dot { background: var(--red); }
+
+  .signal-btn[data-signal="green"].selected  { background: var(--green-light);  border-color: var(--green);  color: var(--green); }
+  .signal-btn[data-signal="yellow"].selected { background: var(--yellow-light); border-color: var(--yellow); color: var(--yellow); }
+  .signal-btn[data-signal="red"].selected    { background: var(--red-light);    border-color: var(--red);    color: var(--red); }
+
+  /* ── Y-goal ── */
+  .ygoal-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 24px;
+  }
+  .ygoal-label {
+    font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;
+  }
+  .ygoal-text { font-size: 14px; line-height: 1.55; margin-bottom: 14px; font-weight: 500; }
+
+  /* ── Submit ── */
+  .btn-submit {
+    width: 100%; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+    padding: 16px; background: var(--text); color: #fff; border: none;
+    border-radius: var(--radius); cursor: pointer; transition: opacity .15s;
+  }
+  .btn-submit:hover { opacity: .85; }
+  .btn-submit:disabled { opacity: .4; cursor: not-allowed; }
+
+  #submit-error { font-size: 13px; color: var(--red); margin-top: 10px; text-align: center; min-height: 20px; }
+
+  /* ── Done ── */
+  #done-state {
+    max-width: 400px; margin: 80px auto 0; text-align: center;
+  }
+  .done-icon { font-size: 48px; margin-bottom: 16px; }
+  #done-state h2 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+  #done-state p  { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+</style>
+</head>
+<body>
+
+<!-- ── Session gate ── -->
+<div id="session-gate">
+  <h2>Enter session code</h2>
+  <p>Your teacher will give you a code that looks like<br><strong style="font-family:'DM Mono',monospace">XKQT-4821</strong></p>
+  <div class="code-input-wrap">
+    <input id="session-code-input" type="text" maxlength="9" placeholder="XXXX-0000"
+      oninput="formatCode(this)" onkeydown="if(event.key==='Enter')enterCode()" />
+    <button class="btn btn-primary" onclick="enterCode()">Go</button>
+  </div>
+  <div class="error-msg" id="session-error"></div>
+</div>
+
+<!-- ── Signal form ── -->
+<div id="signal-form" style="display:none">
+  <div class="page">
+    <div class="header">
+      <div class="header-label">Waypoint check-in</div>
+      <h1 id="node-label-display"></h1>
+      <div class="standard-code" id="standard-display"></div>
+    </div>
+
+    <div class="section-label">Success criteria — how confident are you?</div>
+    <div id="criteria-container"></div>
+
+    <hr class="divider">
+
+    <div class="ygoal-card">
+      <div class="ygoal-label">Big picture — by the end of this unit</div>
+      <div class="ygoal-text" id="ygoal-display"></div>
+      <div class="signal-row" id="ygoal-signals">
+        <button class="signal-btn" data-signal="green"  onclick="selectYGoal(this)"><span class="dot"></span>Got it</button>
+        <button class="signal-btn" data-signal="yellow" onclick="selectYGoal(this)"><span class="dot"></span>Getting there</button>
+        <button class="signal-btn" data-signal="red"    onclick="selectYGoal(this)"><span class="dot"></span>Not yet</button>
+      </div>
+    </div>
+
+    <button class="btn-submit" id="submit-btn" onclick="submitSignals()" disabled>Submit</button>
+    <div id="submit-error"></div>
+  </div>
+</div>
+
+<!-- ── Done ── -->
+<div id="done-state" style="display:none">
+  <div class="done-icon">✓</div>
+  <h2>Submitted</h2>
+  <p>Thanks. Your teacher can now see the class results.</p>
+</div>
+
+<script>
+let SCRIPT_URL = '';
+
+let params = {};
+let criteria = [];
+let criteriaSignals = {};
+let yGoalSignal = null;
+let sessionCode = null;
+
+async function loadConfig() {
+  try {
+    const resp = await fetch('./config.json');
+    const cfg  = await resp.json();
+    SCRIPT_URL = cfg.script_url || '';
+  } catch(e) {
+    console.warn('Could not load config.json', e);
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async function() {
+  await loadConfig();
+
+  const p = new URLSearchParams(window.location.search);
+
+  params = {
+    session_code: p.get('sc'),
+    standard:     p.get('std')    || '',
+    node_id:      p.get('nid')    || '',
+    node_label:   p.get('nlabel') || '',
+    y_goal:       p.get('ygoal')  || '',
+    criteria:     []
+  };
+
+  let i = 0;
+  while (p.get('c' + i) !== null) {
+    params.criteria.push(decodeURIComponent(p.get('c' + i)));
+    i++;
+  }
+  criteria = params.criteria;
+
+  if (params.session_code) {
+    sessionCode = params.session_code;
+    showForm();
+  }
+  // else: gate is visible by default
+});
+
+// ── Code formatting ───────────────────────────────────────────────────────────
+function formatCode(input) {
+  let val = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (val.length > 4) val = val.slice(0,4) + '-' + val.slice(4,8);
+  input.value = val;
+}
+
+function enterCode() {
+  const raw = document.getElementById('session-code-input').value.trim().toUpperCase();
+  // Accept with or without hyphen
+  const clean = raw.replace('-','');
+  if (clean.length !== 8 || !/^[A-Z]{4}\d{4}$/.test(clean)) {
+    document.getElementById('session-error').textContent = 'Enter a valid code — e.g. XKQT-4821';
+    return;
+  }
+  sessionCode = raw.includes('-') ? raw : raw.slice(0,4) + '-' + raw.slice(4);
+  params.session_code = sessionCode;
+  showForm();
+}
+
+// ── Form ──────────────────────────────────────────────────────────────────────
+function showForm() {
+  document.getElementById('session-gate').style.display = 'none';
+  document.getElementById('signal-form').style.display  = 'block';
+
+  document.getElementById('node-label-display').textContent = params.node_label || 'Check in';
+  document.getElementById('standard-display').textContent   = params.standard   || '';
+  document.getElementById('ygoal-display').textContent      = params.y_goal     || '';
+
+  renderCriteria();
+}
+
+function renderCriteria() {
+  const container = document.getElementById('criteria-container');
+  container.innerHTML = '';
+
+  if (!criteria.length) {
+    container.innerHTML = '<p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">No criteria loaded.</p>';
+    return;
+  }
+
+  criteria.forEach(function(text, index) {
+    criteriaSignals[index] = null;
+    const card = document.createElement('div');
+    card.className = 'criterion-card';
+    card.innerHTML = `
+      <div class="criterion-text">${text}</div>
+      <div class="signal-row">
+        <button class="signal-btn" data-signal="green"  data-index="${index}" onclick="selectSignal(this)"><span class="dot"></span>Yes</button>
+        <button class="signal-btn" data-signal="yellow" data-index="${index}" onclick="selectSignal(this)"><span class="dot"></span>Mostly</button>
+        <button class="signal-btn" data-signal="red"    data-index="${index}" onclick="selectSignal(this)"><span class="dot"></span>Not yet</button>
+      </div>`;
+    container.appendChild(card);
+  });
+}
+
+function selectSignal(btn) {
+  const index = parseInt(btn.dataset.index);
+  btn.closest('.signal-row').querySelectorAll('.signal-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  criteriaSignals[index] = btn.dataset.signal;
+  checkReady();
+}
+
+function selectYGoal(btn) {
+  document.getElementById('ygoal-signals').querySelectorAll('.signal-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  yGoalSignal = btn.dataset.signal;
+  checkReady();
+}
+
+function checkReady() {
+  const allDone = criteria.every((_, i) => criteriaSignals[i] != null);
+  document.getElementById('submit-btn').disabled = !(allDone && yGoalSignal);
+}
+
+// ── Submit ────────────────────────────────────────────────────────────────────
+async function submitSignals() {
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+  document.getElementById('submit-error').textContent = '';
+
+  const payload = {
+    session_code:  sessionCode,
+    student_id:    getOrCreateStudentId(),
+    standard:      params.standard,
+    node_id:       params.node_id,
+    node_label:    params.node_label,
+    signals:       criteria.map((text, i) => ({ index: i, text, signal: criteriaSignals[i] })),
+    y_goal_signal: yGoalSignal
+  };
+
+  try {
+    const resp = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || 'Submission failed');
+    document.getElementById('signal-form').style.display = 'none';
+    document.getElementById('done-state').style.display  = 'block';
+  } catch(err) {
+    document.getElementById('submit-error').textContent = 'Could not submit — check your connection and try again.';
+    btn.disabled = false; btn.textContent = 'Submit';
+  }
+}
+
+function getOrCreateStudentId() {
+  let id = sessionStorage.getItem('wp_student_id');
+  if (!id) { id = 'anon_' + Math.random().toString(36).slice(2,10); sessionStorage.setItem('wp_student_id', id); }
+  return id;
+}
+</script>
+</body>
+</html>

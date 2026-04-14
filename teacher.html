@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Waypoints — Teacher</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --border: #e8e6e0;
+    --text: #1a1917;
+    --text-muted: #8a8780;
+    --green: #2d9e6b;
+    --green-light: #edf7f2;
+    --yellow: #d4920a;
+    --yellow-light: #fdf6e3;
+    --red: #cc3f3f;
+    --red-light: #fdf0f0;
+    --accent: #3b5bdb;
+    --accent-light: #eef1ff;
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+
+  .page { max-width: 600px; margin: 0 auto; }
+
+  /* ── PIN gate ── */
+  #pin-gate {
+    max-width: 400px;
+    margin: 80px auto 0;
+    text-align: center;
+  }
+  #pin-gate h2 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+  #pin-gate p  { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.5; }
+
+  .pin-input-wrap {
+    display: flex; gap: 8px; justify-content: center; margin-bottom: 12px;
+  }
+  .pin-digit {
+    font-family: 'DM Mono', monospace;
+    font-size: 24px; font-weight: 500;
+    width: 52px; height: 60px;
+    text-align: center;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    outline: none;
+    transition: border-color .15s;
+  }
+  .pin-digit:focus { border-color: var(--text); }
+
+  .btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px; font-weight: 600;
+    padding: 12px 24px;
+    border: none; border-radius: var(--radius);
+    cursor: pointer; transition: opacity .15s;
+  }
+  .btn:hover { opacity: .85; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-primary   { background: var(--text); color: #fff; }
+  .btn-secondary { background: var(--border); color: var(--text); }
+  .btn-full { width: 100%; padding: 14px; font-size: 15px; }
+
+  .pin-hint  { font-size: 12px; color: var(--text-muted); margin-top: 10px; line-height: 1.5; }
+  .error-msg { font-size: 13px; color: var(--red); margin-top: 10px; min-height: 20px; }
+
+  /* ── Header ── */
+  .header { margin-bottom: 28px; }
+  .header-label {
+    font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;
+  }
+  .header h1 { font-size: 22px; font-weight: 600; }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+  .tab {
+    font-size: 13px; padding: 8px 18px; border-radius: 8px 8px 0 0;
+    border: 1px solid transparent; border-bottom: none;
+    background: transparent; color: var(--text-muted);
+    cursor: pointer; transition: all .15s; margin-bottom: -1px;
+  }
+  .tab.active { background: var(--bg); border-color: var(--border); color: var(--text); font-weight: 600; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── Form elements ── */
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block; font-size: 11px; font-weight: 600;
+    color: var(--text-muted); margin-bottom: 6px;
+    font-family: 'DM Mono', monospace; letter-spacing: .05em; text-transform: uppercase;
+  }
+
+  select, input[type="text"] {
+    width: 100%; padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface); font-family: 'DM Sans', sans-serif;
+    font-size: 14px; color: var(--text); outline: none;
+    transition: border-color .15s;
+    appearance: none;
+  }
+  select:focus, input[type="text"]:focus { border-color: var(--text); }
+  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238a8780' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+  select:disabled { opacity: .5; }
+
+  .field-hint { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
+
+  /* ── Criteria checklist ── */
+  #criteria-checklist { margin-top: 4px; }
+
+  .criterion-check {
+    background: var(--surface); border: 1px solid var(--accent);
+    border-radius: 8px; padding: 10px 12px; margin-bottom: 6px;
+    background: var(--accent-light);
+  }
+  .criterion-node-label {
+    font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--accent); display: block; margin-bottom: 4px;
+  }
+  .criterion-check-text { font-size: 13px; line-height: 1.5; color: var(--text); }
+
+  .ygoal-display {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px;
+    font-size: 13px; line-height: 1.55; color: var(--text-muted);
+    min-height: 40px;
+  }
+
+  /* ── Session code result ── */
+  .code-display {
+    background: var(--accent-light); border: 1px solid var(--accent);
+    border-radius: var(--radius); padding: 20px; text-align: center; margin-bottom: 16px;
+  }
+  .code-display .code-label {
+    font-size: 12px; color: var(--accent); font-weight: 600;
+    font-family: 'DM Mono', monospace; letter-spacing: .08em;
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  .code-display .code-value {
+    font-family: 'DM Mono', monospace; font-size: 32px; font-weight: 500;
+    color: var(--accent); letter-spacing: .15em;
+  }
+
+  .url-box {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px; margin-bottom: 12px;
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    color: var(--text-muted); word-break: break-all; line-height: 1.5;
+  }
+
+  .copy-row { display: flex; gap: 8px; }
+
+  /* ── Results ── */
+  .results-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;
+  }
+  .student-count {
+    font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-muted);
+  }
+
+  .criterion-row {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px;
+  }
+  .criterion-row-text { font-size: 13px; line-height: 1.5; margin-bottom: 10px; }
+
+  .signal-bar { display: flex; gap: 4px; align-items: center; }
+  .bar-segment {
+    height: 28px; border-radius: 6px; display: flex;
+    align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; color: #fff;
+    min-width: 28px; font-family: 'DM Mono', monospace;
+  }
+  .bar-green  { background: var(--green); }
+  .bar-yellow { background: var(--yellow); }
+  .bar-red    { background: var(--red); }
+
+  .bar-legend { display: flex; gap: 12px; margin-top: 6px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-muted); }
+  .legend-dot  { width: 8px; height: 8px; border-radius: 50%; }
+
+  .ygoal-result {
+    background: var(--surface); border: 2px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px; margin-top: 16px;
+  }
+
+  .card-label {
+    font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px;
+    display: block;
+  }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+  .no-results { font-size: 13px; color: var(--text-muted); text-align: center; padding: 32px 0; }
+
+  .loading { font-size: 13px; color: var(--text-muted); padding: 8px 0; }
+
+  /* ── Change PIN ── */
+  .change-pin-wrap { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border); }
+  .change-pin-wrap summary { font-size: 13px; color: var(--text-muted); cursor: pointer; }
+  .change-pin-inner { margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<!-- ── PIN gate ── -->
+<div id="pin-gate">
+  <h2 id="pin-heading">Set your teacher PIN</h2>
+  <p id="pin-subtext">Choose a 4-digit PIN to protect this page. You'll need it each time you open the teacher view.</p>
+  <div class="pin-input-wrap">
+    <input class="pin-digit" type="number" min="0" max="9" id="p0" oninput="pinInput(this,'p1')" />
+    <input class="pin-digit" type="number" min="0" max="9" id="p1" oninput="pinInput(this,'p2')" />
+    <input class="pin-digit" type="number" min="0" max="9" id="p2" oninput="pinInput(this,'p3')" />
+    <input class="pin-digit" type="number" min="0" max="9" id="p3" oninput="pinInput(this,null)" />
+  </div>
+  <button class="btn btn-primary" onclick="submitPin()" id="pin-btn">Set PIN</button>
+  <div class="error-msg" id="pin-error"></div>
+  <p class="pin-hint">PIN is stored locally on this device only.</p>
+</div>
+
+<!-- ── Main app ── -->
+<div id="main-app" style="display:none">
+  <div class="page">
+
+    <div class="header">
+      <div class="header-label">Waypoints Signals</div>
+      <h1>Teacher Dashboard</h1>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" id="tab-generate" onclick="switchTab('generate')">Generate session</button>
+      <button class="tab"        id="tab-results"  onclick="switchTab('results')">View results</button>
+    </div>
+
+    <!-- ── Generate panel ── -->
+    <div class="panel active" id="panel-generate">
+
+      <div class="field">
+        <label>Standard</label>
+        <select id="sel-standard" onchange="onStandardChange()">
+          <option value="">— select —</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Y-goal</label>
+        <div class="ygoal-display" id="ygoal-display">Select a standard to see the Y-goal.</div>
+      </div>
+
+      <div class="field">
+        <label>Waypoint / node</label>
+        <select id="sel-node" onchange="onNodeChange()" disabled>
+          <option value="">— select standard first —</option>
+        </select>
+      </div>
+
+      <div class="field" id="criteria-field" style="display:none">
+        <label>Success criteria — select which to include</label>
+        <div id="criteria-checklist"></div>
+        <div class="field-hint">Deselect any criteria not yet taught.</div>
+      </div>
+
+      <div style="margin-top:20px">
+        <button class="btn btn-primary btn-full" onclick="generateSession()" id="gen-btn" disabled>
+          Generate session code
+        </button>
+        <div class="error-msg" id="gen-error"></div>
+      </div>
+
+      <!-- Result -->
+      <div id="code-result" style="display:none; margin-top:20px">
+        <div class="code-display">
+          <div class="code-label">Session code — share with students</div>
+          <div class="code-value" id="code-value"></div>
+        </div>
+        <span class="card-label">Student link</span>
+        <div class="url-box" id="student-url"></div>
+        <div class="copy-row">
+          <button class="btn btn-primary"   onclick="copyUrl()"  id="copy-url-btn">Copy link</button>
+          <button class="btn btn-secondary" onclick="copyCode()" id="copy-code-btn">Copy code only</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Results panel ── -->
+    <div class="panel" id="panel-results">
+
+      <div class="field">
+        <label>Session code</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" id="res-code" placeholder="XKQT-4821"
+            style="font-family:'DM Mono',monospace;letter-spacing:.08em;max-width:160px;text-transform:uppercase"
+            onkeydown="if(event.key==='Enter')fetchResults()" />
+          <button class="btn btn-primary" onclick="fetchResults()">Load</button>
+        </div>
+      </div>
+
+      <div id="results-container"></div>
+
+    </div>
+
+    <!-- ── Change PIN ── -->
+    <details class="change-pin-wrap">
+      <summary>Change PIN</summary>
+      <div class="change-pin-inner">
+        <div class="pin-input-wrap" style="justify-content:flex-start">
+          <input class="pin-digit" type="number" id="cp0" oninput="pinInput(this,'cp1')" style="width:44px;height:52px;font-size:20px" />
+          <input class="pin-digit" type="number" id="cp1" oninput="pinInput(this,'cp2')" style="width:44px;height:52px;font-size:20px" />
+          <input class="pin-digit" type="number" id="cp2" oninput="pinInput(this,'cp3')" style="width:44px;height:52px;font-size:20px" />
+          <input class="pin-digit" type="number" id="cp3" oninput="pinInput(this,null)"  style="width:44px;height:52px;font-size:20px" />
+        </div>
+        <button class="btn btn-secondary" style="margin-top:10px" onclick="changePin()">Update PIN</button>
+        <div class="error-msg" id="change-pin-error"></div>
+      </div>
+    </details>
+
+  </div>
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+const SIGNAL_URL  = window.location.origin + window.location.pathname.replace('teacher.html', '');
+const PIN_KEY     = "wp_teacher_pin";
+const PIN_SET_KEY = "wp_teacher_pin_set";
+
+const YEAR_STANDARDS = {
+  "7": ["AC9S7U01","AC9S7U02","AC9S7U03","AC9S7U04","AC9S7U05","AC9S7U06"]
+};
+
+const GOALS_MAP_FILE = "./data/science_y_goals_map.json";
+
+function nodeFile(code) {
+  const year = code.match(/AC9S(\d+)/)?.[1] || "7";
+  return `./data/y${year}_science_${code}.json`;
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let SCRIPT_URL = '';
+let goalsMap   = null;
+let currentStd = null;
+let selectedCriteria = new Set();
+
+async function loadConfig() {
+  try {
+    const resp = await fetch('./config.json');
+    const cfg  = await resp.json();
+    SCRIPT_URL = cfg.script_url || '';
+  } catch(e) {
+    console.warn('Could not load config.json', e);
+  }
+}
+
+// ── PIN ───────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function() {
+  const pinSet = localStorage.getItem(PIN_SET_KEY);
+  if (pinSet) {
+    document.getElementById('pin-heading').textContent  = 'Enter your PIN';
+    document.getElementById('pin-subtext').textContent  = 'Enter your 4-digit teacher PIN to continue.';
+    document.getElementById('pin-btn').textContent      = 'Unlock';
+  }
+  document.getElementById('p0').focus();
+});
+
+function pinInput(el, nextId) {
+  el.value = el.value.toString().slice(-1);
+  if (el.value && nextId) {
+    const next = document.getElementById(nextId);
+    if (next) next.focus();
+  }
+}
+
+function getPin(prefix) {
+  return ['0','1','2','3'].map(i => {
+    const el = document.getElementById(prefix + i);
+    return el ? el.value : '';
+  }).join('');
+}
+
+function submitPin() {
+  const pin = getPin('p');
+  if (pin.length < 4 || !/^\d{4}$/.test(pin)) {
+    document.getElementById('pin-error').textContent = 'Enter all 4 digits.'; return;
+  }
+  if (!localStorage.getItem(PIN_SET_KEY)) {
+    localStorage.setItem(PIN_KEY, pin);
+    localStorage.setItem(PIN_SET_KEY, '1');
+    showApp();
+  } else {
+    if (pin === localStorage.getItem(PIN_KEY)) showApp();
+    else document.getElementById('pin-error').textContent = 'Incorrect PIN.';
+  }
+}
+
+function changePin() {
+  const pin = getPin('cp');
+  if (pin.length < 4) { document.getElementById('change-pin-error').textContent = 'Enter all 4 digits.'; return; }
+  localStorage.setItem(PIN_KEY, pin);
+  const el = document.getElementById('change-pin-error');
+  el.style.color = 'var(--green)'; el.textContent = 'PIN updated.';
+}
+
+function showApp() {
+  document.getElementById('pin-gate').style.display  = 'none';
+  document.getElementById('main-app').style.display  = 'block';
+  loadConfig().then(() => loadGoalsMap());
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  ['generate','results'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('active', t === name);
+    document.getElementById('panel-' + t).classList.toggle('active', t === name);
+  });
+}
+
+// ── Data loading ──────────────────────────────────────────────────────────────
+async function loadGoalsMap() {
+  try {
+    const resp = await fetch(GOALS_MAP_FILE);
+    goalsMap = await resp.json();
+    populateStandards();
+  } catch(e) {
+    console.warn('Could not load goals map', e);
+  }
+}
+
+function populateStandards() {
+  const stdSel = document.getElementById('sel-standard');
+  stdSel.innerHTML = '<option value="">— select —</option>';
+  const codes = YEAR_STANDARDS["7"] || [];
+  codes.forEach(code => {
+    const opt = document.createElement('option');
+    opt.value = code;
+    let title = code;
+    if (goalsMap?.year_levels?.["7"]) {
+      const std = goalsMap.year_levels["7"].standards.find(s => s.code === code);
+      if (std) title = `${code} — ${std.title}`;
+    }
+    opt.textContent = title;
+    stdSel.appendChild(opt);
+  });
+}
+
+async function onStandardChange() {
+  const code = document.getElementById('sel-standard').value;
+  const nodeSel = document.getElementById('sel-node');
+
+  // Reset downstream
+  nodeSel.innerHTML = '<option value="">— select waypoint —</option>';
+  nodeSel.disabled = true;
+  document.getElementById('ygoal-display').textContent = 'Select a standard to see the Y-goal.';
+  document.getElementById('criteria-field').style.display = 'none';
+  document.getElementById('gen-btn').disabled = true;
+  document.getElementById('code-result').style.display = 'none';
+  currentStd = null;
+
+  if (!code) return;
+
+  // Y-goal
+  if (goalsMap?.year_levels?.["7"]) {
+    const std = goalsMap.year_levels["7"].standards.find(s => s.code === code);
+    document.getElementById('ygoal-display').textContent = std?.y_goal || '—';
+  }
+
+  // Load node file
+  try {
+    const resp = await fetch(nodeFile(code));
+    const data = await resp.json();
+    currentStd = data.standard;
+
+    nodeSel.innerHTML = '<option value="">— select waypoint —</option>';
+
+    currentStd.nodes.forEach(node => {
+      const opt = document.createElement('option');
+      opt.value = node.id;
+      opt.textContent = `${node.id}. ${node.label}${node.hinge ? ' ⚑' : ''}`;
+      nodeSel.appendChild(opt);
+    });
+
+    // All waypoints at bottom as explicit choice
+    const allOpt = document.createElement('option');
+    allOpt.value = 'all';
+    allOpt.textContent = '— All waypoints (whole standard) —';
+    nodeSel.appendChild(allOpt);
+
+    nodeSel.disabled = false;
+  } catch(e) {
+    nodeSel.innerHTML = '<option value="">— could not load nodes —</option>';
+    console.warn('Node file load failed', e);
+  }
+}
+
+function onNodeChange() {
+  const val = document.getElementById('sel-node').value;
+  document.getElementById('criteria-field').style.display = 'none';
+  document.getElementById('gen-btn').disabled = true;
+  document.getElementById('code-result').style.display = 'none';
+  selectedCriteria.clear();
+
+  if (!val || !currentStd) return;
+
+  // Render criteria
+  const container = document.getElementById('criteria-checklist');
+  container.innerHTML = '';
+
+  if (val === 'all') {
+    currentStd.nodes.forEach(function(node, ni) {
+      if (!node.success_criteria?.length) return;
+      // Waypoint header
+      const header = document.createElement('div');
+      header.style.cssText = 'font-family:"DM Mono",monospace;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:' + (ni > 0 ? '14px' : '0') + ' 0 6px';
+      header.textContent = `Waypoint ${node.id} — ${node.label}${node.hinge ? ' ⚑' : ''}`;
+      container.appendChild(header);
+      node.success_criteria.forEach(function(text, i) {
+        selectedCriteria.add(`${node.id}_${i}`);
+        const div = document.createElement('div');
+        div.className = 'criterion-check';
+        div.innerHTML = `<div class="criterion-check-text">${text}</div>`;
+        container.appendChild(div);
+      });
+    });
+  } else {
+    const node = currentStd.nodes.find(n => n.id === parseInt(val));
+    if (!node || !node.success_criteria?.length) return;
+    node.success_criteria.forEach(function(text, i) {
+      selectedCriteria.add(i);
+      const div = document.createElement('div');
+      div.className = 'criterion-check';
+      div.innerHTML = `<div class="criterion-check-text">${text}</div>`;
+      container.appendChild(div);
+    });
+  }
+
+  document.getElementById('criteria-field').style.display = 'block';
+  document.getElementById('gen-btn').disabled = false;
+}
+
+function checkGenReady() {
+  document.getElementById('gen-btn').disabled = selectedCriteria.size === 0;
+}
+
+
+// ── Generate session ──────────────────────────────────────────────────────────
+async function generateSession() {
+  const code    = document.getElementById('sel-standard').value;
+  const nodeVal = document.getElementById('sel-node').value;
+  const ygoal   = document.getElementById('ygoal-display').textContent;
+
+  document.getElementById('gen-error').textContent = '';
+
+  if (!code || !nodeVal || !currentStd) {
+    document.getElementById('gen-error').textContent = 'Select a standard and waypoint.'; return;
+  }
+
+  // Resolve node label and criteria
+  let nodeLabel, nodeId, criteriaTexts;
+  if (nodeVal === 'all') {
+    nodeLabel = 'All waypoints';
+    nodeId = 'all';
+    criteriaTexts = [];
+    currentStd.nodes.forEach(n => (n.success_criteria || []).forEach(t => criteriaTexts.push(t)));
+  } else {
+    const node = currentStd.nodes.find(n => n.id === parseInt(nodeVal));
+    if (!node) { document.getElementById('gen-error').textContent = 'Could not find node.'; return; }
+    nodeLabel = node.label;
+    nodeId = node.id;
+    criteriaTexts = node.success_criteria || [];
+  }
+
+  if (!criteriaTexts.length) {
+    document.getElementById('gen-error').textContent = 'No success criteria found for this selection.'; return;
+  }
+
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true; btn.textContent = 'Generating…';
+
+  try {
+    const regUrl = SCRIPT_URL + '?action=register'
+      + '&standard='   + encodeURIComponent(code)
+      + '&node_id='    + encodeURIComponent(nodeId)
+      + '&node_label=' + encodeURIComponent(nodeLabel)
+      + '&label='      + encodeURIComponent(code + ' · ' + nodeLabel);
+
+    const resp = await fetch(regUrl);
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || 'Registration failed');
+
+    showCodeResult(data.session_code, code, nodeId, nodeLabel, ygoal, criteriaTexts);
+
+  } catch(err) {
+    document.getElementById('gen-error').textContent = 'Could not generate code — check your connection.';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Generate session code';
+  }
+}
+
+function showCodeResult(sessionCode, standard, nodeId, nodeLabel, ygoal, criteria) {
+  document.getElementById('code-value').textContent = sessionCode;
+
+  let url = SIGNAL_URL
+    + '?sc='     + encodeURIComponent(sessionCode)
+    + '&std='    + encodeURIComponent(standard)
+    + '&nid='    + encodeURIComponent(nodeId)
+    + '&nlabel=' + encodeURIComponent(nodeLabel)
+    + '&ygoal='  + encodeURIComponent(ygoal);
+
+  criteria.forEach(function(c, i) {
+    url += '&c' + i + '=' + encodeURIComponent(c);
+  });
+
+  document.getElementById('student-url').textContent = url;
+  document.getElementById('code-result').style.display = 'block';
+}
+
+function copyUrl() {
+  navigator.clipboard.writeText(document.getElementById('student-url').textContent).then(() => {
+    const btn = document.getElementById('copy-url-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy link', 2000);
+  });
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(document.getElementById('code-value').textContent).then(() => {
+    const btn = document.getElementById('copy-code-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy code only', 2000);
+  });
+}
+
+// ── Results ───────────────────────────────────────────────────────────────────
+async function fetchResults() {
+  const code = document.getElementById('res-code').value.trim().toUpperCase();
+  const container = document.getElementById('results-container');
+  if (!code) { container.innerHTML = '<div class="no-results">Enter a session code.</div>'; return; }
+
+  container.innerHTML = '<div class="no-results">Loading…</div>';
+
+  try {
+    const url = SCRIPT_URL + '?session_code=' + encodeURIComponent(code);
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || 'Failed to load');
+    renderResults(data);
+  } catch(err) {
+    container.innerHTML = '<div class="no-results">Could not load — check the code and your connection.</div>';
+  }
+}
+
+function renderResults(data) {
+  const container = document.getElementById('results-container');
+  if (!data.aggregate || !data.aggregate.length) {
+    container.innerHTML = '<div class="no-results">No responses yet for this session.</div>'; return;
+  }
+
+  const total = data.student_count;
+  let html = `<div class="results-header">
+    <span class="card-label" style="margin:0">Results</span>
+    <span class="student-count">${total} student${total !== 1 ? 's' : ''}</span>
+  </div>`;
+
+  data.aggregate.forEach(function(row) {
+    const sum  = (row.green + row.yellow + row.red) || 1;
+    html += `
+      <div class="criterion-row">
+        <div class="criterion-row-text">${row.text}</div>
+        <div class="signal-bar">
+          ${row.green  > 0 ? `<div class="bar-segment bar-green"  style="flex:${row.green}">${row.green}</div>`  : ''}
+          ${row.yellow > 0 ? `<div class="bar-segment bar-yellow" style="flex:${row.yellow}">${row.yellow}</div>` : ''}
+          ${row.red    > 0 ? `<div class="bar-segment bar-red"    style="flex:${row.red}">${row.red}</div>`    : ''}
+        </div>
+        <div class="bar-legend">
+          <span class="legend-item"><span class="legend-dot" style="background:var(--green)"></span>${Math.round(row.green/sum*100)}% yes</span>
+          <span class="legend-item"><span class="legend-dot" style="background:var(--yellow)"></span>${Math.round(row.yellow/sum*100)}% mostly</span>
+          <span class="legend-item"><span class="legend-dot" style="background:var(--red)"></span>${Math.round(row.red/sum*100)}% not yet</span>
+        </div>
+      </div>`;
+  });
+
+  const yg    = data.y_goal_aggregate;
+  const ygSum = (yg.green + yg.yellow + yg.red) || 1;
+  html += `
+    <div class="ygoal-result">
+      <span class="card-label">Big picture — Y-goal confidence</span>
+      <div class="signal-bar">
+        ${yg.green  > 0 ? `<div class="bar-segment bar-green"  style="flex:${yg.green}">${yg.green}</div>`  : ''}
+        ${yg.yellow > 0 ? `<div class="bar-segment bar-yellow" style="flex:${yg.yellow}">${yg.yellow}</div>` : ''}
+        ${yg.red    > 0 ? `<div class="bar-segment bar-red"    style="flex:${yg.red}">${yg.red}</div>`    : ''}
+      </div>
+      <div class="bar-legend">
+        <span class="legend-item"><span class="legend-dot" style="background:var(--green)"></span>${Math.round(yg.green/ygSum*100)}% got it</span>
+        <span class="legend-item"><span class="legend-dot" style="background:var(--yellow)"></span>${Math.round(yg.yellow/ygSum*100)}% getting there</span>
+        <span class="legend-item"><span class="legend-dot" style="background:var(--red)"></span>${Math.round(yg.red/ygSum*100)}% not yet</span>
+      </div>
+    </div>`;
+
+  container.innerHTML = html;
+}
+</script>
+</body>
+</html>
