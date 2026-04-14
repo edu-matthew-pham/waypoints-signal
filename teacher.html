@@ -689,7 +689,13 @@ async function fetchResults() {
   container.innerHTML = '<div class="no-results">Loading…</div>';
 
   try {
-    // Fetch submissions with nested criterion_signals
+    // Fetch session metadata for y_goal
+    const { data: session } = await db
+      .from('sessions')
+      .select('label, node_label, y_goal')
+      .eq('session_code', code)
+      .single();
+
     const { data: subs, error } = await db
       .from('submissions')
       .select('id, student_id, y_goal_signal, criterion_signals(criterion_idx, criterion_txt, signal)')
@@ -716,7 +722,9 @@ async function fetchResults() {
     renderResults({
       student_count:    studentIds.size,
       aggregate:        Object.values(aggregate).sort((a,b) => a.index - b.index),
-      y_goal_aggregate: yGoalAgg
+      y_goal_aggregate: yGoalAgg,
+      node_label:       session?.node_label || '',
+      y_goal:           session?.y_goal || ''
     });
   } catch(err) {
     container.innerHTML = '<div class="no-results">Could not load — check the code and your connection.</div>';
@@ -737,9 +745,16 @@ function renderResults(data) {
     <div class="results-header">
       <span class="card-label" style="margin:0">Results — ${total} student${total !== 1 ? 's' : ''}</span>
       <button class="btn btn-secondary" onclick="exportCSV()" style="font-size:12px;padding:6px 14px">Export CSV</button>
-    </div>
+    </div>`;
 
-    <div class="summary-grid">`;
+  if (data.node_label || data.y_goal) {
+    html += `<div style="margin-bottom:14px">`;
+    if (data.node_label) html += `<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">${data.node_label}</div>`;
+    if (data.y_goal) html += `<div style="font-size:12px;color:var(--text-muted);line-height:1.5;font-style:italic">${data.y_goal}</div>`;
+    html += `</div>`;
+  }
+
+  html += `<div class="summary-grid">`;
 
   data.aggregate.forEach(function(row, i) {
     const sum = (row.green + row.yellow + row.red) || 1;
