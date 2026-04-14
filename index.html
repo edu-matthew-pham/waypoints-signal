@@ -210,30 +210,60 @@ let yGoalSignal = null;
 let sessionCode = null;
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', function() {
+window.addEventListener('DOMContentLoaded', async function() {
   const p = new URLSearchParams(window.location.search);
+  const sc = p.get('sc');
 
-  params = {
-    session_code: p.get('sc'),
-    standard:     p.get('std')    || '',
-    node_id:      p.get('nid')    || '',
-    node_label:   p.get('nlabel') || '',
-    y_goal:       p.get('ygoal')  || '',
-    criteria:     []
-  };
-
-  let i = 0;
-  while (p.get('c' + i) !== null) {
-    params.criteria.push(decodeURIComponent(p.get('c' + i)));
-    i++;
+  if (sc) {
+    sessionCode = sc;
+    await loadSession(sc);
   }
-  criteria = params.criteria;
-
-  if (params.session_code) {
-    sessionCode = params.session_code;
-    showForm();
-  }
+  // else: gate visible by default
 });
+
+async function loadSession(sc) {
+  try {
+    // Fetch session record
+    const { data, error } = await db
+      .from('sessions')
+      .select('*')
+      .eq('session_code', sc)
+      .single();
+
+    if (error || !data) {
+      document.getElementById('session-error').textContent = 'Session code not found.';
+      return;
+    }
+
+    // Fetch node JSON for criteria
+    const year = data.standard.match(/AC9S(\d+)/)?.[1] || '7';
+    const nodeResp = await fetch(`./data/y${year}_science_${data.standard}.json`);
+    const nodeData = await nodeResp.json();
+
+    let criteriaTexts = [];
+    if (data.node_id === 'all') {
+      nodeData.standard.nodes.forEach(n => (n.success_criteria || []).forEach(t => criteriaTexts.push(t)));
+    } else {
+      const node = nodeData.standard.nodes.find(n => n.id === parseInt(data.node_id));
+      criteriaTexts = node?.success_criteria || [];
+    }
+
+    params = {
+      session_code: sc,
+      standard:     data.standard,
+      node_id:      data.node_id,
+      node_label:   data.node_label,
+      y_goal:       data.y_goal || '',
+      criteria:     criteriaTexts
+    };
+    criteria = criteriaTexts;
+    showForm();
+
+  } catch(err) {
+    document.getElementById('session-error').textContent = 'Could not load session — check your connection.';
+    console.error(err);
+  }
+}
 
 // ── Code formatting ───────────────────────────────────────────────────────────
 function formatCode(input) {
@@ -250,8 +280,10 @@ function enterCode() {
     return;
   }
   sessionCode = raw.includes('-') ? raw : raw.slice(0,4) + '-' + raw.slice(4);
-  params.session_code = sessionCode;
-  showForm();
+  document.getElementById('session-gate').style.display = 'none';
+  document.getElementById('signal-form').style.display  = 'block';
+  document.getElementById('node-label-display').textContent = 'Loading…';
+  loadSession(sessionCode);
 }
 
 // ── Form ──────────────────────────────────────────────────────────────────────

@@ -652,10 +652,11 @@ async function generateSession() {
       standard:     code,
       node_id:      String(nodeId),
       node_label:   nodeLabel,
+      y_goal:       ygoal,
       label:        code + ' · ' + nodeLabel
     });
     if (error) throw error;
-    showCodeResult(sessionCode, code, nodeId, nodeLabel, ygoal, criteriaTexts);
+    showCodeResult(sessionCode);
   } catch(err) {
     document.getElementById('gen-error').textContent = 'Could not generate code — ' + err.message;
   } finally {
@@ -663,18 +664,9 @@ async function generateSession() {
   }
 }
 
-function showCodeResult(sessionCode, standard, nodeId, nodeLabel, ygoal, criteria) {
+function showCodeResult(sessionCode) {
   document.getElementById('code-value').textContent = sessionCode;
-
-  let url = SIGNAL_URL
-    + '?sc='     + encodeURIComponent(sessionCode)
-    + '&std='    + encodeURIComponent(standard)
-    + '&nid='    + encodeURIComponent(nodeId)
-    + '&nlabel=' + encodeURIComponent(nodeLabel)
-    + '&ygoal='  + encodeURIComponent(ygoal);
-
-  criteria.forEach(function(c, i) { url += '&c' + i + '=' + encodeURIComponent(c); });
-
+  const url = SIGNAL_URL + '?sc=' + encodeURIComponent(sessionCode);
   document.getElementById('student-url').textContent = url;
   document.getElementById('code-result').style.display = 'block';
 }
