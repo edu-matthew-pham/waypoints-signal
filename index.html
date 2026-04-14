@@ -313,23 +313,37 @@ async function submitSignals() {
   document.getElementById('submit-error').textContent = '';
 
   const studentId = getOrCreateStudentId();
-  const rows = criteria.map(function(text, i) {
-    return {
-      session_code:  sessionCode,
-      student_id:    studentId,
-      standard:      params.standard,
-      node_id:       params.node_id,
-      node_label:    params.node_label,
-      criterion_idx: i,
-      criterion_txt: text,
-      signal:        criteriaSignals[i],
-      y_goal_signal: yGoalSignal
-    };
-  });
 
   try {
-    const { error } = await db.from('signals').insert(rows);
-    if (error) throw error;
+    // Insert submission row, get back ID
+    const { data: sub, error: subErr } = await db
+      .from('submissions')
+      .insert({
+        session_code:  sessionCode,
+        student_id:    studentId,
+        standard:      params.standard,
+        node_id:       params.node_id,
+        node_label:    params.node_label,
+        y_goal_signal: yGoalSignal
+      })
+      .select('id')
+      .single();
+
+    if (subErr) throw subErr;
+
+    // Insert criterion signals
+    const criterionRows = criteria.map(function(text, i) {
+      return {
+        submission_id: sub.id,
+        criterion_idx: i,
+        criterion_txt: text,
+        signal:        criteriaSignals[i]
+      };
+    });
+
+    const { error: sigErr } = await db.from('criterion_signals').insert(criterionRows);
+    if (sigErr) throw sigErr;
+
     document.getElementById('signal-form').style.display = 'none';
     document.getElementById('done-state').style.display  = 'block';
   } catch(err) {
