@@ -171,6 +171,10 @@
     </div>
 
     <div class="section-label">Success criteria — how confident are you?</div>
+    <div id="ygoal-context" style="display:none;background:var(--bg);border-left:3px solid var(--border);padding:10px 14px;margin-bottom:14px;border-radius:0 8px 8px 0">
+      <div style="font-size:10px;font-family:'DM Mono',monospace;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px">By the end of this unit</div>
+      <div id="ygoal-context-text" style="font-size:13px;line-height:1.55;color:var(--text)"></div>
+    </div>
     <div id="criteria-container"></div>
 
     <hr class="divider">
@@ -293,6 +297,11 @@ function showForm() {
   document.getElementById('node-label-display').textContent = params.node_label || 'Check in';
   document.getElementById('standard-display').textContent   = params.standard   || '';
   document.getElementById('ygoal-display').textContent      = params.y_goal     || '';
+
+  if (params.y_goal) {
+    document.getElementById('ygoal-context-text').textContent = params.y_goal;
+    document.getElementById('ygoal-context').style.display = 'block';
+  }
   renderCriteria();
 }
 
@@ -310,8 +319,8 @@ function renderCriteria() {
     card.innerHTML = `
       <div class="criterion-text">${text}</div>
       <div class="signal-row">
-        <button class="signal-btn" data-signal="green"  data-index="${index}" onclick="selectSignal(this)"><span class="dot"></span>Yes</button>
-        <button class="signal-btn" data-signal="yellow" data-index="${index}" onclick="selectSignal(this)"><span class="dot"></span>Mostly</button>
+        <button class="signal-btn" data-signal="green"  data-index="${index}" onclick="selectSignal(this)"><span class="dot"></span>Got it</button>
+        <button class="signal-btn" data-signal="yellow" data-index="${index}" onclick="selectSignal(this)"><span class="dot"></span>Getting there</button>
         <button class="signal-btn" data-signal="red"    data-index="${index}" onclick="selectSignal(this)"><span class="dot"></span>Not yet</button>
       </div>`;
     container.appendChild(card);

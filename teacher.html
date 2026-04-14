@@ -767,8 +767,8 @@ function renderResults(data) {
         <div class="summary-label"${needsTitle ? ` title="${row.text}"` : ''}>${row.text}</div>
         <div class="summary-bar-wrap">
           <div class="summary-bar">
-            ${gPct > 0 ? `<div style="flex:${row.green};background:var(--green)" title="${gPct}% yes"></div>` : ''}
-            ${yPct > 0 ? `<div style="flex:${row.yellow};background:var(--yellow)" title="${yPct}% mostly"></div>` : ''}
+            ${gPct > 0 ? `<div style="flex:${row.green};background:var(--green)" title="${gPct}% got it"></div>` : ''}
+            ${yPct > 0 ? `<div style="flex:${row.yellow};background:var(--yellow)" title="${yPct}% getting there"></div>` : ''}
             ${rPct > 0 ? `<div style="flex:${row.red};background:var(--red)" title="${rPct}% not yet"></div>` : ''}
           </div>
           <span class="summary-pct ${gPct >= 70 ? 'pct-green' : rPct >= 40 ? 'pct-red' : 'pct-yellow'}">${gPct}%</span>
@@ -811,8 +811,8 @@ function renderResults(data) {
           ${row.red    > 0 ? `<div class="bar-segment bar-red"    style="flex:${row.red}">${row.red}</div>`    : ''}
         </div>
         <div class="bar-legend">
-          <span class="legend-item"><span class="legend-dot" style="background:var(--green)"></span>${Math.round(row.green/sum*100)}% yes</span>
-          <span class="legend-item"><span class="legend-dot" style="background:var(--yellow)"></span>${Math.round(row.yellow/sum*100)}% mostly</span>
+          <span class="legend-item"><span class="legend-dot" style="background:var(--green)"></span>${Math.round(row.green/sum*100)}% got it</span>
+          <span class="legend-item"><span class="legend-dot" style="background:var(--yellow)"></span>${Math.round(row.yellow/sum*100)}% getting there</span>
           <span class="legend-item"><span class="legend-dot" style="background:var(--red)"></span>${Math.round(row.red/sum*100)}% not yet</span>
         </div>
       </div>`;
