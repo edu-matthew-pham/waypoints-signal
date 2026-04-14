@@ -689,12 +689,29 @@ async function fetchResults() {
   container.innerHTML = '<div class="no-results">Loading…</div>';
 
   try {
-    // Fetch session metadata for y_goal
+    // Fetch session metadata
     const { data: session } = await db
       .from('sessions')
-      .select('label, node_label, y_goal')
+      .select('label, node_label, node_id, standard, y_goal')
       .eq('session_code', code)
       .single();
+
+    // Fetch node grouping if all waypoints
+    let criteriaGroups = null;
+    if (session?.node_id === 'all' && session?.standard) {
+      try {
+        const year = session.standard.match(/AC9S(\d+)/)?.[1] || '7';
+        const nodeResp = await fetch(`./data/y${year}_science_${session.standard}.json`);
+        const nodeData = await nodeResp.json();
+        criteriaGroups = [];
+        let idx = 0;
+        nodeData.standard.nodes.forEach(n => {
+          const sc = n.success_criteria || [];
+          if (sc.length) criteriaGroups.push({ nodeLabel: n.label, nodeId: n.id, hinge: n.hinge, startIdx: idx, count: sc.length });
+          idx += sc.length;
+        });
+      } catch(e) { criteriaGroups = null; }
+    }
 
     const { data: subs, error } = await db
       .from('submissions')
@@ -724,7 +741,8 @@ async function fetchResults() {
       aggregate:        Object.values(aggregate).sort((a,b) => a.index - b.index),
       y_goal_aggregate: yGoalAgg,
       node_label:       session?.node_label || '',
-      y_goal:           session?.y_goal || ''
+      y_goal:           session?.y_goal || '',
+      criteria_groups:  criteriaGroups
     });
   } catch(err) {
     container.innerHTML = '<div class="no-results">Could not load — check the code and your connection.</div>';
@@ -756,12 +774,23 @@ function renderResults(data) {
 
   html += `<div class="summary-grid">`;
 
+  const groups = data.criteria_groups;
+
+  // Helper to get group header for an index
+  function groupHeaderFor(i, prevI) {
+    if (!groups) return null;
+    const g = groups.find(g => g.startIdx === i);
+    return g ? `<div style="font-size:10px;font-family:'DM Mono',monospace;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin:${i > 0 ? '12px' : '0'} 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border)">${g.nodeLabel}${g.hinge ? ' ⚑' : ''}</div>` : null;
+  }
+
   data.aggregate.forEach(function(row, i) {
     const sum = (row.green + row.yellow + row.red) || 1;
     const gPct = Math.round(row.green/sum*100);
     const yPct = Math.round(row.yellow/sum*100);
     const rPct = Math.round(row.red/sum*100);
     const needsTitle = row.text.length > 100;
+    const header = groupHeaderFor(i);
+    if (header) html += header;
     html += `
       <div class="summary-row">
         <div class="summary-label"${needsTitle ? ` title="${row.text}"` : ''}>${row.text}</div>
@@ -781,7 +810,7 @@ function renderResults(data) {
   const ygSum = (yg.green + yg.yellow + yg.red) || 1;
   const ygPct = Math.round(yg.green/ygSum*100);
   html += `
-      <div class="summary-row">
+      <div class="summary-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
         <div class="summary-label" title="Big picture Y-goal confidence" style="color:var(--text-muted)">Y-goal confidence</div>
         <div class="summary-bar-wrap">
           <div class="summary-bar">
@@ -802,6 +831,8 @@ function renderResults(data) {
   // ── Criterion detail ─────────────────────────────────────────────────────────
   data.aggregate.forEach(function(row, i) {
     const sum = (row.green + row.yellow + row.red) || 1;
+    const header = groupHeaderFor(i);
+    if (header) html += header;
     html += `
       <div class="criterion-row">
         <div class="criterion-row-text"><strong>SC${i+1}</strong> — ${row.text}</div>

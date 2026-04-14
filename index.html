@@ -245,9 +245,15 @@ async function loadSession(sc) {
     const nodeData = await nodeResp.json();
 
     let criteriaTexts = [];
+    let criteriaGroups = []; // [{nodeLabel, nodeId, criteria:[...]}]
     let nodeYDescription = '';
+
     if (data.node_id === 'all') {
-      nodeData.standard.nodes.forEach(n => (n.success_criteria || []).forEach(t => criteriaTexts.push(t)));
+      nodeData.standard.nodes.forEach(n => {
+        const sc = n.success_criteria || [];
+        sc.forEach(t => criteriaTexts.push(t));
+        if (sc.length) criteriaGroups.push({ nodeLabel: n.label, nodeId: n.id, hinge: n.hinge, criteria: sc });
+      });
       nodeYDescription = nodeData.standard.y_goal || '';
     } else {
       const node = nodeData.standard.nodes.find(n => n.id === parseInt(data.node_id));
@@ -256,13 +262,14 @@ async function loadSession(sc) {
     }
 
     params = {
-      session_code:      sc,
-      standard:          data.standard,
-      node_id:           data.node_id,
-      node_label:        data.node_label,
-      y_goal:            data.y_goal || '',
+      session_code:       sc,
+      standard:           data.standard,
+      node_id:            data.node_id,
+      node_label:         data.node_label,
+      y_goal:             data.y_goal || '',
       node_y_description: nodeYDescription,
-      criteria:          criteriaTexts
+      criteria:           criteriaTexts,
+      criteria_groups:    criteriaGroups
     };
     criteria = criteriaTexts;
     showForm();
@@ -316,19 +323,49 @@ function renderCriteria() {
     container.innerHTML = '<p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">No criteria loaded.</p>';
     return;
   }
-  criteria.forEach(function(text, index) {
-    criteriaSignals[index] = null;
-    const card = document.createElement('div');
-    card.className = 'criterion-card';
-    card.innerHTML = `
-      <div class="criterion-text">${text}</div>
-      <div class="signal-row">
-        <button class="signal-btn" data-signal="green"  data-index="${index}" onclick="selectSignal(this)"><span class="dot"></span>Got it</button>
-        <button class="signal-btn" data-signal="yellow" data-index="${index}" onclick="selectSignal(this)"><span class="dot"></span>Getting there</button>
-        <button class="signal-btn" data-signal="red"    data-index="${index}" onclick="selectSignal(this)"><span class="dot"></span>Not yet</button>
-      </div>`;
-    container.appendChild(card);
-  });
+
+  const groups = params.criteria_groups;
+
+  if (groups && groups.length) {
+    // All waypoints — render with group headers
+    let globalIndex = 0;
+    groups.forEach(function(group) {
+      const header = document.createElement('div');
+      header.style.cssText = 'font-size:11px;font-family:"DM Mono",monospace;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin:16px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)';
+      header.textContent = `Waypoint ${group.nodeId} — ${group.nodeLabel}${group.hinge ? ' ⚑' : ''}`;
+      container.appendChild(header);
+
+      group.criteria.forEach(function(text) {
+        const index = globalIndex++;
+        criteriaSignals[index] = null;
+        const card = document.createElement('div');
+        card.className = 'criterion-card';
+        card.innerHTML = `
+          <div class="criterion-text">${text}</div>
+          <div class="signal-row">
+            <button class="signal-btn" data-signal="green"  data-index="${index}" onclick="selectSignal(this)"><span class="dot"></span>Got it</button>
+            <button class="signal-btn" data-signal="yellow" data-index="${index}" onclick="selectSignal(this)"><span class="dot"></span>Getting there</button>
+            <button class="signal-btn" data-signal="red"    data-index="${index}" onclick="selectSignal(this)"><span class="dot"></span>Not yet</button>
+          </div>`;
+        container.appendChild(card);
+      });
+    });
+  } else {
+    // Single waypoint
+    criteria.forEach(function(text, index) {
+      criteriaSignals[index] = null;
+      const card = document.createElement('div');
+      card.className = 'criterion-card';
+      card.innerHTML = `
+        <div class="criterion-text">${text}</div>
+        <div class="signal-row">
+          <button class="signal-btn" data-signal="green"  data-index="${index}" onclick="selectSignal(this)"><span class="dot"></span>Got it</button>
+          <button class="signal-btn" data-signal="yellow" data-index="${index}" onclick="selectSignal(this)"><span class="dot"></span>Getting there</button>
+          <button class="signal-btn" data-signal="red"    data-index="${index}" onclick="selectSignal(this)"><span class="dot"></span>Not yet</button>
+        </div>`;
+      container.appendChild(card);
+    });
+  }
 }
 
 function selectSignal(btn) {
